@@ -3,7 +3,7 @@ customtkinter==6.0.0
 pyinstaller==6.6.0
 openpyxl==3.1.5
 python-docx==1.2.0
-google-genai>=1.10.0,<3.0.0
+google-genai>=2.24.0,<3.0.0
 fastapi==0.141.1
 starlette==1.7.0
 uvicorn==0.31.1
