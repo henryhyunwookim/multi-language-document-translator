@@ -10,7 +10,7 @@ uvicorn==0.31.1
 python-multipart==0.0.32
 google-cloud-storage==2.19.0
 google-cloud-secret-manager==2.24.0
-google-cloud-logging==3.11.4
+google-cloud-logging==3.16.3
 pymupdf==1.28.2
 markdown==3.10.3
 beautifulsoup4==4.13.5
