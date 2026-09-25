@@ -10,4 +10,4 @@ Security fixes target the latest code on the default branch. Older snapshots are
 
 ## Deployment notes
 
-The sample Cloud Run deployment serves a public BYOK API. A public deployment must keep operator Gemini credentials out of request paths, restrict its runtime service account, configure request-size and instance limits, and place rate limiting at a trusted edge. See [the public-release checklist](../docs/PUBLIC_RELEASE_CHECKLIST.md).
+The sample Cloud Run deployment serves a public BYOK API. A public deployment must keep operator Gemini credentials out of request paths, restrict its runtime service account, configure request-size and instance limits, and place rate limiting at a trusted edge. See [the deployment guide](../deploy/README.md#public-service-configuration).

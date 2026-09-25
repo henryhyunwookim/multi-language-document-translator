@@ -122,4 +122,12 @@ Before the first deployment, run `./deploy/setup-runtime-identity.ps1 -ProjectId
 
 Backend deployment uses this identity, 2 GiB memory, eight concurrent requests, a one-instance cap, and disabled LangSmith tracing. Public Gemini requests require the visitor's key. PowerShell scripts stop when a build or deployment fails, and cloud commands explicitly target the selected project.
 
-Cloud Run's filesystem is ephemeral: SQLite jobs do not survive instance replacement. A Docker `VOLUME` declaration does not supply persistent storage. See [the public-release checklist](../docs/PUBLIC_RELEASE_CHECKLIST.md) for storage lifecycle and broader-traffic requirements.
+Cloud Run's filesystem is ephemeral: SQLite jobs do not survive instance replacement. A Docker `VOLUME` declaration does not supply persistent storage. Move durable jobs to shared storage before increasing the instance count.
+
+## Public service configuration
+
+- Put translation and upload routes behind an external Application Load Balancer with Cloud Armor rate limits. Restrict Cloud Run ingress to that load balancer and disable the default `run.app` URL. The in-process limiter is a fallback, not distributed abuse control.
+- Set and monitor instance, concurrency, request-timeout, and budget limits. Upload limits are 64 MiB per file and 256 MiB per batch.
+- Keep the output bucket private, grant the runtime only bucket-scoped object access, and configure a short lifecycle rule for `document-translator/outputs/`. Verify job expiration and log retention before accepting confidential documents.
+- After deploying, verify that `/logs`, `/logs/download`, `/cloud-links`, and `/cleanup/...` return 404 and that Gemini requests without a caller key are rejected.
+- Publish data-handling terms appropriate to your deployment and provider settings; start with [Privacy and data handling](../docs/PRIVACY.md).

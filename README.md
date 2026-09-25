@@ -40,7 +40,7 @@ The hosted translator uses a **bring-your-own-key** model. Enter your own Gemini
 ## 🔐 Security and Public Use
 
 - Public deployments require a caller-supplied Gemini key and do not expose server logs or Cloud Console links through the API.
-- Request bodies are size-limited, the backend deploy script caps the service at one instance and eight concurrent requests, and a per-instance request limiter is enabled. For distributed, internet-facing abuse protection, deploy behind an external load balancer with Cloud Armor and block direct access to the default Cloud Run URL; see [the public-release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md).
+- Request bodies are size-limited, the backend deploy script caps the service at one instance and eight concurrent requests, and a per-instance request limiter is enabled. For distributed, internet-facing abuse protection, deploy behind an external load balancer with Cloud Armor and block direct access to the default Cloud Run URL; see [the deployment guide](deploy/README.md#public-service-configuration).
 - Create the dedicated bucket-scoped runtime identity before deploying: `./deploy/setup-runtime-identity.ps1 -ProjectId <project>` on Windows or `./deploy/setup-runtime-identity.sh <project>` on Linux/macOS. The deployment identity also needs `roles/iam.serviceAccountUser` on `translator-runtime`.
 - See [Security policy](.github/SECURITY.md), [Contributing](.github/CONTRIBUTING.md), and [Privacy and data handling](docs/PRIVACY.md).
 - This repository has no `LICENSE` yet. Repository visibility alone does not grant permission to reuse the code; choose and add the intended license before inviting reuse or contributions.
