@@ -1,0 +1,5 @@
+{
+    "api_key": "YOUR_GEMINI_API_KEY_HERE",
+    "provider": "Gemini 3.1 Pro Preview",
+    "target_lang": "Japanese"
+}

@@ -1,0 +1,17 @@
+steps:
+  # Build backend container image from backend/Dockerfile with root context
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'backend/Dockerfile'
+      - '-t'
+      - '$_IMAGE_TAG'
+      - '.'
+
+  # Push backend container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$_IMAGE_TAG']
+
+images:
+  - '$_IMAGE_TAG'

@@ -1,0 +1,118 @@
+# User Data & Preserved Samples
+input/
+output/
+reference/
+samples/
+config.json
+**/config.json
+models_cache.json
+**/models_cache.json
+translation_cache.json
+process_debug.txt
+import_error_log.txt
+backend_url.txt
+**/backend_url.txt
+
+# Build Artifacts
+build/
+dist/
+*.spec
+!backend/desktop/DocumentTranslator.spec
+*.exe
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+.pytest_cache/
+
+# Local tests and regression suites
+tests/
+test/
+__tests__/
+spec/
+*.test.*
+test_*.py
+*_test.py
+conftest.py
+output_verification/
+test.db
+*.sqlite3
+
+*.spec.*
+
+# Local-only regression fixtures added during workspace maintenance
+tools/evaluation/test_layout_regressions.py
+tools/evaluation/test_local_service.py
+
+# Test-suite exceptions above must not expose generated Python bytecode.
+__pycache__/
+*.py[cod]
+
+# Secrets and credentials
+.env.*
+!.env.example
+!.env.sample
+.agents/
+.codex/
+application_default_credentials.json
+*-credentials.json
+service-account*.json
+*.pem
+*.key
+*.token
+credentials.json
+token.json
+service_account*.json
+
+# Caches and coverage
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.tsbuildinfo
+.cache/
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+scratch/
+scratch_*
+debug_pages/
+tmp_*.py
+debug_*.py
+/*.png
+
+# OS and editor files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local notebooks and dumps
+*.ipynb
+local_dump_*
+
+# Web / Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+.env.local
+.env.*.local
+node_modules/
+env/
+ENV/
+.AppleDouble
+.LSOverride
+$RECYCLE.BIN/
+.fuse_hidden*

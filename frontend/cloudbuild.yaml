@@ -1,0 +1,17 @@
+steps:
+  # Build the frontend image with the API URL baked in
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/translator-web'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=$_NEXT_PUBLIC_API_URL'
+      - '.'
+
+  # Push the image to GCR
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/translator-web']
+
+images:
+  - 'gcr.io/$PROJECT_ID/translator-web'

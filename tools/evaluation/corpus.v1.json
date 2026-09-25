@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "description": "Generated, offline regression fixtures. These verify contracts and invariants, not human translation quality.",
+  "semantic_accuracy": "not_measured",
+  "suites": [
+    "tools.evaluation.test_office_preservation.OfficePreservationChecks",
+    "tools.evaluation.test_quality_pipeline.QualityTests",
+    "tools.evaluation.test_durable_jobs.JobTests",
+    "tools.evaluation.test_job_api.ApiTests",
+    "tools.evaluation.test_pdf_gates.GateTests",
+    "tools.evaluation.test_multilingual_quality.MultilingualTests"
+  ],
+  "coverage": [
+    "Excel drawings, charts, attachments, formulas and shared-string occurrences",
+    "PowerPoint links, soft breaks, notes and targeted visual-fit repair",
+    "Word hyperlinks, headers and protected fields",
+    "JSON keys and types, HTML attributes, Markdown syntax, CSV cell positions",
+    "Exact segment-ID coverage, numeric fidelity, review exhaustion and call budgets",
+    "Input signature validation, immutable package invariants and unavailable rendering",
+    "Job idempotency, leases, crash recovery, cancellation, expiry and authentication",
+    "Credential isolation, trace redaction and truthful PDF gates"
+  ],
+  "required_real_world_evaluation": [
+    "Bilingual assessment against approved reference translations",
+    "Office-rendered comparison of real SmartArt, OLE, complex charts and diagrams",
+    "CJK, right-to-left text, mixed fonts, long translations and locale-specific numbers",
+    "Scanned-page OCR omissions, PDF reading order and table cell association",
+    "Cost and latency comparison with the previous deterministic baseline"
+  ]
+}

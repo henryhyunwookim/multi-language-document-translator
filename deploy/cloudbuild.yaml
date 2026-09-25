@@ -1,0 +1,89 @@
+steps:
+  # 1. Build backend container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'backend/Dockerfile'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/translator-api'
+      - '.'
+  
+  # 2. Push backend container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/translator-api']
+
+  # 3. Deploy backend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'translator-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/translator-api'
+      - '--region'
+      - 'asia-northeast1'
+      - '--allow-unauthenticated'
+      - '--platform'
+      - 'managed'
+      - '--memory'
+      - '2Gi'
+      - '--timeout'
+      - '1800'
+      - '--concurrency'
+      - '8'
+      - '--max-instances'
+      - '1'
+      - '--service-account'
+      - 'translator-runtime@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--set-env-vars'
+      - 'GOOGLE_CLOUD_PROJECT=$PROJECT_ID,LANGSMITH_TRACING=false,LANGCHAIN_TRACING_V2=false'
+
+  # 4. Resolve the URL with the SDK image; the Docker builder has no gcloud.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-ceu'
+      - |
+        gcloud run services describe translator-api --project $PROJECT_ID --platform managed --region asia-northeast1 --format 'value(status.url)' > /workspace/deploy/backend_url.txt
+
+  # 5. Build frontend with the resolved API endpoint.
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-ceu'
+      - |
+        BACKEND_URL=$$(cat /workspace/deploy/backend_url.txt)
+        echo "Resolved Backend URL: $$BACKEND_URL"
+        cd frontend
+        docker build -t gcr.io/$PROJECT_ID/translator-web --build-arg NEXT_PUBLIC_API_URL=$$BACKEND_URL .
+  
+  # 5. Push frontend container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/translator-web']
+
+  # 6. Deploy frontend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'translator-web'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/translator-web'
+      - '--region'
+      - 'asia-northeast1'
+      - '--allow-unauthenticated'
+      - '--platform'
+      - 'managed'
+      - '--memory'
+      - '1Gi'
+      - '--port'
+      - '8080'
+
+timeout: '1800s'
+
+images:
+  - 'gcr.io/$PROJECT_ID/translator-api'
+  - 'gcr.io/$PROJECT_ID/translator-web'
