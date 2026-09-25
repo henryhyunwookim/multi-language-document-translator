@@ -9,7 +9,7 @@ starlette==1.7.0
 uvicorn==0.31.1
 python-multipart==0.0.32
 google-cloud-storage==2.19.0
-google-cloud-secret-manager==2.24.0
+google-cloud-secret-manager==2.30.0
 google-cloud-logging==3.11.4
 pymupdf==1.28.2
 markdown==3.10.3
