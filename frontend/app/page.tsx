@@ -480,7 +480,7 @@ export default function Home() {
         <h1 className="title" style={{ margin: 0 }}>Context-Aware Document Translator</h1>
         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="btn" title="Open Google AI Studio to create a Gemini API key">Get Gemini API key</a>
         <a
-          href="https://github.com/henryhyunwookim/multi-language-document-translator-public"
+          href="https://github.com/henryhyunwookim/multi-language-document-translator"
           target="_blank"
           rel="noopener noreferrer"
           style={{

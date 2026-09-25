@@ -367,8 +367,8 @@ python tools/operations/sync_secrets.py --check
 ### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/henryhyunwookim/multi-language-document-translator-public.git
-cd multi-language-document-translator-public
+git clone https://github.com/henryhyunwookim/multi-language-document-translator.git
+cd multi-language-document-translator
 
 # Install Python backend dependencies
 pip install -r requirements.txt

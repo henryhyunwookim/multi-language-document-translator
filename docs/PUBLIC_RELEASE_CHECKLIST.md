@@ -4,9 +4,9 @@ Publishing source and inviting visitors to a hosted translation service are sepa
 
 ## Clean publication copy (2026-09-25)
 
-The publication repository is `henryhyunwookim/multi-language-document-translator-public`. It is an independent repository populated from reviewed source files, with a new root commit. It is not a fork and does not inherit the development repository's branches, pull requests, commit history, or retained document objects.
+The publication repository is `henryhyunwookim/multi-language-document-translator`. It is an independent repository populated from reviewed source files, with a new root commit. It is not a fork and does not inherit the development repository's branches, pull requests, commit history, or retained document objects.
 
-The original development repository must remain private: a closed pull-request reference still retains previously removed private documents. Creating the independent publication copy avoids carrying those documents, the historical `reference/` tree, and their redistribution questions into the release. GitHub Support cleanup is only required if the original repository itself is later made public.
+The original development repository was renamed to `multi-language-document-translator-private-history` and archived privately, pending permanent deletion with the required GitHub account permission. The clean publication repository took the original name. Repository identity and clean history were preserved during the rename; the historical `reference/` tree and private document history were not imported. Private local recovery copies remain excluded from Git and build uploads.
 
 Do not merge, mirror-push, or import old development history into the publication repository. Future changes should be reviewed source changes committed on top of its clean history. Local recovery copies and release administration scripts under `tmp/` are excluded from Git and build uploads.
 
@@ -18,7 +18,7 @@ Do not merge, mirror-push, or import old development history into the publicatio
 - Audit Python requirements and the full npm dependency tree. Recheck before publication because advisories can change.
 - Run the local backend regression suite, frontend lint, and frontend production build. The GitHub workflow also performs dependency audits, a full-history secret scan, and backend startup/route smoke checks.
 - Review the final diff. The source includes a security policy and privacy documentation. No license has been selected; public visibility alone does not grant reuse rights.
-- Enable GitHub private vulnerability reporting when making the publication repository public. Keep the original development repository private.
+- Enable GitHub private vulnerability reporting when making the publication repository public. Never restore the old development history into this repository.
 
 ## Security maintenance
 
