@@ -14,5 +14,5 @@ google-cloud-logging==3.11.4
 pymupdf==1.28.2
 markdown==3.10.3
 beautifulsoup4==4.13.5
-langgraph==1.2.11
+langgraph==1.2.12
 langchain-core==1.6.3
