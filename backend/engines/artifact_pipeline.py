@@ -7,11 +7,15 @@ from typing import Any
 def process_file(translator: Any, temp_input_path: str, ext: str) -> io.BytesIO:
     """Publish data-only failure observations after success or a quality rejection."""
     from backend.quality.feedback import record_report
+    from backend.quality.models import QualityFailure
     translator.quality_report = None
     try:
-        return _process_file(translator, temp_input_path, ext)
-    finally:
+        output = _process_file(translator, temp_input_path, ext)
+    except QualityFailure:
         record_report(getattr(translator, 'quality_report', None))
+        raise
+    record_report(getattr(translator, 'quality_report', None))
+    return output
 
 
 def _process_file(translator: Any, temp_input_path: str, ext: str) -> io.BytesIO:

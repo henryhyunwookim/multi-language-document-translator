@@ -62,6 +62,7 @@ class QualityReport:
     model_calls: int = 0
     repairs: int = 0
     observed_failure_codes: list[str] = field(default_factory=list)
+    feedback_insights: dict[str, Any] = field(default_factory=dict)
 
     def finish(self) -> "QualityReport":
         if any(f.severity == "error" for f in self.findings) or "failed" in self.checks.values():

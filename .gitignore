@@ -46,6 +46,7 @@ test.db
 # Local-only regression fixtures added during workspace maintenance
 tools/evaluation/test_layout_regressions.py
 tools/evaluation/test_local_service.py
+tools/evaluation/feedback_regressions.py
 
 # Test-suite exceptions above must not expose generated Python bytecode.
 __pycache__/

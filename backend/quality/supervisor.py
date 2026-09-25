@@ -87,8 +87,9 @@ class Supervisor:
         translator.quality_report = self.report
         self.call_lock = threading.RLock()
         self.state = deepcopy(getattr(translator, "load_checkpoint", lambda: {})() or {})
-        from backend.quality.feedback import load_rules
-        self.feedback_rules = load_rules(manifest.kind)
+        from backend.quality.feedback import load_insights
+        self.report.feedback_insights = load_insights(manifest.kind)
+        self.feedback_rules = sorted(code for code, evidence in self.report.feedback_insights.items() if evidence['active'])
         fingerprint = hashlib.sha256(json.dumps({"pipeline_version": 3, "source": manifest.sha256, "kind": manifest.kind,
                                                 "target": getattr(translator, "target_lang", "English"),
                                                 "model": getattr(translator, "model_name", "default"),
@@ -130,6 +131,10 @@ class Supervisor:
         return response
 
     def call(self, prompt, *, reviewer=False, response_schema=None):
+        if reviewer and self.feedback_rules:
+            from backend.quality.feedback import RULES
+            guidance = 'Additional known-failure checks: ' + ' '.join(RULES[code][1] for code in self.feedback_rules)
+            prompt = [guidance, *prompt] if isinstance(prompt, list) else guidance + '\n' + prompt
         config = {"response_mime_type": "application/json"}
         if response_schema is not None:
             config["response_schema"] = response_schema

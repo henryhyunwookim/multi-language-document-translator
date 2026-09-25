@@ -101,6 +101,7 @@ def translate_native_pdf(translator, data: bytes) -> io.BytesIO:
                                                            primary['color'], bool(primary.get('flags',0) & 16))
                         break
                     except ValueError:
+                        report.observed_failure_codes = sorted(set(report.observed_failure_codes) | {'text_fit'})
                         if attempt == 2 or supervisor.model is None:
                             break
                         feedback = Finding('text_fit',
