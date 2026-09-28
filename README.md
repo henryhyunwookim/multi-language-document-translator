@@ -84,6 +84,34 @@ This section documents data handling, lifecycle retention, and storage boundarie
 
 ## 🏛️ System Architecture
 
+### Technical & Architectural Decisions
+
+- **In-Place OOXML Text Patching over Document Reconstruction (`ooxml_text.py`)**:
+  - *Decision*: Translate modern Microsoft Office files (DOCX, PPTX, XLSX) by directly inspecting and patching the underlying OpenXML package parts (`word/document.xml`, `ppt/slides/slide*.xml`, `xl/sharedStrings.xml`), replacing target text nodes while leaving packaging relationships, styles, shapes, embedded charts, and XML namespaces untouched.
+  - *Context & Motivation*: Rebuilding Office documents from scratch (e.g., using `python-docx`, `python-pptx`, or round-tripping through HTML/Markdown) destroys fine-grained layout styling, corrupts slide master templates, breaks font run hierarchies, and strips complex shapes or macro relationships.
+  - *Rationale & Alternatives Considered*: In-place XML AST text replacement guarantees 100% preservation of native layouts, embedded vector assets, slide transitions, conditional cell formatting, and workbook formula dependencies without requiring proprietary Office desktop licenses or conversion middleware.
+  - *Consequences & Impact*: Near-zero visual drift across Office translations and preservation of document macros, metadata, and embedded media.
+
+- **Staged Multi-Agent Orchestration with Dual Micro-Gates (LangGraph)**:
+  - *Decision*: Orchestrate page layout classification, multimodal translation, and structural normalization using an explicit LangGraph state machine featuring two independent micro-gates (Semantic Translation Critic Gate & Structural Layout Linter Gate) and localized repair loops.
+  - *Context & Motivation*: Attempting end-to-end multimodal translation of complex PDFs (with tables, LaTeX math, TOC dots, multi-tier headers) in a single monolithic prompt results in compounding defects: fixing a table syntax error frequently causes the LLM to hallucinate or drop text, while re-translating whole pages wastes expensive vision tokens.
+  - *Rationale & Alternatives Considered*: Separating semantic validation (omissions, named entities, register) from deterministic structural linting (pipe table balancing, LaTeX conversion, indentation tiers) allows formatting defects to be corrected locally at the structural layer without triggering expensive re-translation.
+  - *Consequences & Impact*: Dramatically reduced hallucination and formatting error rates, lower API token consumption, and predictable multi-stage verification.
+
+- **Persistent SQLite Job Engine with Worker Leases over Heavy Distributed Queues**:
+  - *Decision*: Implement a persistent SQLite-backed job queue (`backend/jobs.py`) with atomic row-level worker leases, idempotency fingerprints (SHA-256), mid-translation segment checkpoints, and per-provider concurrency limits.
+  - *Context & Motivation*: Large multi-page PDF or workbook translations take several minutes. Relying on simple in-memory task queues or synchronous HTTP connections causes lost progress on transient network dropouts, container restarts, or client disconnects.
+  - *Rationale & Alternatives Considered*: Redis/Celery or Cloud Tasks introduces external infrastructure dependencies and configuration overhead for local desktop and single-instance deployments. Embedded SQLite with WAL mode provides ACID transaction leases, checkpoint resumption, and zero external service operational costs.
+  - *Consequences & Impact*: Robust batch processing that reliably survives backend restarts and browser page refreshes.
+
+- **Ephemeral Transfer Buffers with Direct GCS Signed URLs for Large Outputs (> 32 MiB)**:
+  - *Decision*: Write completed document translations to short-lived Google Cloud Storage output buffers and generate time-bounded signed URLs for client downloads, rather than streaming raw binary payloads directly through Cloud Run HTTP responses.
+  - *Context & Motivation*: Google Cloud Run enforces a strict 32 MiB response payload limit. Heavy presentations with embedded media, high-resolution scanned PDFs, and large workbooks easily exceed this ceiling, resulting in HTTP 500/502 errors.
+  - *Rationale & Alternatives Considered*: Direct GCS signed downloads bypass Cloud Run's HTTP egress limits completely, freeing worker threads immediately after upload.
+  - *Consequences & Impact*: Reliable delivery of arbitrarily large document packages with minimal serverless compute footprint.
+
+---
+
 ### High-Level System Architecture
 
 The overview shows component relationships from clients to delivery. The document lifecycle below contains the segment and page processing paths; their detailed diagrams expand each path. The feedback diagram explains adaptation across runs; cloud dependencies are shown in **Multi-PC Cloud Architecture**.
