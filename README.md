@@ -40,19 +40,13 @@ A modern, automated platform to translate documents—including PowerPoint prese
 
 ---
 
-## 🌐 Web Version
+## 🌐 Web Version & Access Model
 
-Run the web application locally using the instructions below, or deploy your own instance using [the deployment guide](#️-cloud-deployment). Publishing this source does not certify an existing hosted instance for public document uploads.
+Run the web application locally using the instructions below, or deploy your own instance using the [Cloud Deployment Guide](#️-cloud-deployment). Publishing this repository does not certify an existing hosted instance for public document uploads.
 
-The hosted translator uses a **bring-your-own-key** model. Enter your own Gemini API key to use Gemini; the public Cloud Run API never uses the maintainer's Gemini secret for visitor requests. Google Translate can be selected without a Gemini key. Keys stay in the current browser tab by default; persistent browser storage is an explicit opt-in. Review [Privacy and Data Handling](#-privacy--data-handling) before uploading documents.
-
-## 🔐 Security and Public Use
-
-- Public deployments require a caller-supplied Gemini key and do not expose server logs or Cloud Console links through the API.
-- Request bodies are size-limited, the backend deploy script caps the service at one instance and eight concurrent requests, and a per-instance request limiter is enabled. For distributed, internet-facing abuse protection, deploy behind an external load balancer with Cloud Armor and block direct access to the default Cloud Run URL; see [the deployment guide](#public-service-configuration--hardening).
-- Create the dedicated bucket-scoped runtime identity before deploying: `./deploy/setup-runtime-identity.ps1 -ProjectId <project>` on Windows or `./deploy/setup-runtime-identity.sh <project>` on Linux/macOS. The deployment identity also needs `roles/iam.serviceAccountUser` on `translator-runtime`.
-- See [Security policy](.github/SECURITY.md), [Contributing](.github/CONTRIBUTING.md), and [Privacy and Data Handling](#-privacy--data-handling).
-- This repository has no `LICENSE` yet. Repository visibility alone does not grant permission to reuse the code; choose and add the intended license before inviting reuse or contributions.
+- **Bring-Your-Own-Key Model**: Public and hosted web deployments require visitors to supply their own Gemini API key. The public Cloud Run API never exposes or uses the operator's maintainer secrets for visitor requests. Google Translate can be selected without a Gemini key.
+- **Security & Access Boundaries**: Public deployments disable diagnostic server logs and Cloud Console links. Production environments should be hardened behind an external load balancer with Cloud Armor; see [Public Service Configuration & Hardening](#public-service-configuration--hardening).
+- **Policies & Licensing**: See [Security policy](.github/SECURITY.md), [Contributing](.github/CONTRIBUTING.md), and [Privacy & Data Handling](#-privacy--data-handling). Note that this repository has no `LICENSE` yet; repository visibility alone does not grant reuse permissions.
 
 ## 🔒 Privacy & Data Handling
 
@@ -61,8 +55,8 @@ This section documents data handling, lifecycle retention, and storage boundarie
 ### What You Send
 - **Browser-to-Backend Transmission**: The browser sends input text or uploaded files, target language, selected model, and (for Gemini) your API key directly to the configured translator backend over HTTPS.
 - **Provider Policies**: Gemini requests are processed using the caller's supplied API key. Google Translate requests use the configured provider. All provider-side processing is governed by the respective provider's terms of service and privacy policy.
-- **Credential Storage**: Gemini API keys are held exclusively in browser **session storage** by default and are sent solely with translation and model requests. Users may explicitly opt in to persistent local storage ("Remember this key in this browser"). Keys should be cleared when finished, and persistent storage must never be used on shared devices.
-- **Backend Credential Isolation**: The backend holds visitor Gemini keys in worker process memory only for the duration of the request or active job lease. Keys are **never** persisted to the SQLite job database, audit logs, or shared cloud storage. Cloud Run deployments never use maintainer secrets for visitor requests.
+- **Credential Storage & Scoping**: Gemini API keys are held exclusively in browser **session storage** by default (cleared upon closing the tab/browser) and sent solely with translation requests. Users may explicitly opt into persistent browser storage ("Remember this key in this browser"). Keys should be cleared when finished, and persistent storage must never be used on shared devices.
+- **Backend Credential Isolation**: The backend holds visitor Gemini keys in worker process memory strictly for the duration of the active request or job lease. Keys are **never** persisted to the SQLite job database, audit logs, or shared cloud storage.
 
 ### Temporary Files & Operational Data Retention
 - **Local Job Processing**: Durable batch jobs store source documents, intermediate representations, generated translation artifacts, and quality reports under the designated job directory (`$TRANSLATOR_JOB_DIR`, defaulting to the system temporary directory). Files are automatically purged when their time-to-live expires (`TRANSLATOR_JOB_TTL`, default 24 hours). Ephemeral serverless container filesystems (such as default Cloud Run) may lose local job state earlier upon instance restarts.
@@ -72,8 +66,7 @@ This section documents data handling, lifecycle retention, and storage boundarie
 - **Confidential Records**: The hosted web demo does not provide authenticated user accounts or guarantee enterprise-grade retention or regulatory compliance (e.g., HIPAA, GDPR data residency). Do not upload confidential or regulated documents until verifying the deployment's storage retention and provider policies.
 
 ### Browser-Side Storage
-- **Application Preferences**: The frontend caches model preferences, target languages, and UI settings in browser `localStorage`.
-- **API Key Scoping**: Gemini API keys remain in `sessionStorage` (cleared upon closing the tab/browser) unless "Remember this key in this browser" is explicitly enabled. Browser storage is unencrypted and accessible to scripts executing within the browser origin.
+- **Application Preferences & Cache**: The frontend caches model preferences, target languages, and UI settings in browser `localStorage`. API keys remain ephemeral in `sessionStorage` unless the user explicitly checks "Remember this key in this browser". Browser storage is unencrypted and accessible to scripts executing within the browser origin.
 
 ### Optional Aggregate Quality Feedback
 - When `TRANSLATION_FEEDBACK_BUCKET` is configured by the operator, cross-worker failure memory stores pseudonymous records containing only timestamps, allowlisted failure codes, and salted SHA-256 document digests.
@@ -247,6 +240,8 @@ flowchart TD
 5. **🛡️ Micro-Gate 2: Structural & Layout Linter Critic (`formatting_critic_node`)**: Fast deterministic linting (regex, TOC discipline, LaTeX math, pipe column counts, subordinate condition tiers) plus dry-run `LayoutEngine` HTML parse validation before typesetting.
 6. **🎨 Typesetter Agent (`typesetter_node`)**: Leverages `backend/engines/layout_engine.py` to produce print-ready HTML/CSS, executing dynamic 2-column dot leaders and composite table splitting for wide matrices.
 
+- **Observability & Distributed Tracing**: Every stage of page execution is instrumented with LangSmith tracing (`backend/core/observability.py`), tracking token usage, latency, agent prompt/response states, and critic micro-gate retries without leaking binary image payloads. See [🔭 LangSmith Setup & Monitoring](#-langsmith-setup--monitoring-backendcoreobservabilitypy) for full configuration and dashboard guide.
+
 ---
 
 ### 📈 Adaptive Quality Checks & Feedback Loop (`backend/quality/feedback.py`)
@@ -358,6 +353,92 @@ In addition to page-level micro-gates, full documents undergo cross-page review 
 - **Multi-Page Table Header Continuity**: Restores repeated headers and consistent column counts when dense tables split across pages.
 - **Sequential Article Numbering**: Identifies duplicate or missing article/section numbers.
 - **Sliding Window Multi-Page Context**: Processes overlapping windows of 3–5 pages with up to 2 full audit iterations.
+
+---
+
+### 🔭 LangSmith Setup & Monitoring (`backend/core/observability.py`)
+
+The scanned-PDF processing pipeline orchestrates multi-agent page translation through LangGraph state machines governed by dual micro-gates. **LangSmith** provides centralized distributed tracing, run evaluation, latency analysis, and token auditing across all agent nodes without leaking proprietary document contents.
+
+```mermaid
+flowchart LR
+    subgraph Execution["LangGraph Execution"]
+        Pipeline["page_multi_agent_pipeline<br/>@traceable_step"]
+        Nodes["Nodes & Gates<br/>classifier, translator, critics, repair"]
+        Pipeline --> Nodes
+    end
+
+    subgraph Sanitizer["Zero-Leak Sanitizer"]
+        Redact["_sanitize_inputs()<br/>API keys redacted<br/>image_bytes -> &lt;image_bytes len=N&gt;"]
+        Nodes --> Redact
+    end
+
+    subgraph Telemetry["LangSmith Cloud"]
+        TraceTree["Distributed Trace Tree<br/>Tokens, Latency, Diffs, Retries"]
+        Redact -->|Spans &lt; 1 KB| TraceTree
+    end
+```
+
+#### Key Architecture & Privacy Guarantees
+
+1. **Zero-Image Payload Leak**:
+   Raw page image bitmaps can reach several megabytes per page. To prevent network overhead and keep sensitive document visuals out of external SaaS logs, `_sanitize_inputs()` in [`backend/core/observability.py`](backend/core/observability.py) replaces raw `image_bytes` with metadata markers (`<image_bytes len=...>`) and redacts authorization tokens. Every span payload remains lightweight (<1 KB).
+2. **Multi-PC Credential Discovery**:
+   The telemetry layer lazily initializes via `init_langsmith()`:
+   - **Local Environment**: Reads `LANGSMITH_API_KEY` (or `LANGCHAIN_API_KEY`) from environment or `.env` (keys must begin with `ls__...`).
+   - **Google Cloud Secret Manager**: If unset locally, the backend automatically retrieves the `langsmith-api-key` secret using Application Default Credentials (ADC) or `gcloud` CLI.
+   - **Target Project**: Traces are grouped under `LANGCHAIN_PROJECT` (default: `multi-language-document-translator`).
+3. **Public Deployment Hardening**:
+   To prevent tracking anonymous visitor documents on public installations, container deployments (`deploy/deploy-backend.sh`, `deploy/deploy-backend.ps1`, `deploy/cloudbuild.yaml`) explicitly disable tracing by default via `LANGSMITH_TRACING=false` and `LANGCHAIN_TRACING_V2=false`. Operators must explicitly opt in to enable tracing in production.
+
+#### Setup & Activation
+
+##### 1. Local Development Setup
+Create an account at [smith.langchain.com](https://smith.langchain.com) and obtain an API key:
+
+```bash
+# In your terminal or .env file:
+export LANGSMITH_API_KEY="ls__your_api_key_here"
+export LANGCHAIN_TRACING_V2="true"
+export LANGCHAIN_PROJECT="multi-language-document-translator"  # (Default project name)
+```
+
+##### 2. Storing in Google Cloud Secret Manager (Multi-PC Team Access)
+Store your key in Secret Manager to enable zero-config tracing on any machine authenticated via `gcloud`:
+```bash
+echo -n "ls__your_api_key_here" | gcloud secrets create langsmith-api-key --data-file=-
+```
+
+##### 3. Enabling on Google Cloud Run Deployments
+To trace staging or dedicated Cloud Run executions, update the Cloud Run service environment:
+```bash
+gcloud run services update translator-api \
+    --region asia-northeast1 \
+    --set-env-vars LANGSMITH_TRACING=true,LANGCHAIN_TRACING_V2=true,LANGCHAIN_PROJECT=multi-language-document-translator \
+    --update-secrets LANGSMITH_API_KEY=langsmith-api-key:latest
+```
+
+##### 4. Disabling Tracing
+To completely turn off LangSmith tracing without removing credentials:
+```bash
+export LANGSMITH_TRACING="false"
+export LANGCHAIN_TRACING_V2="false"
+```
+
+#### Monitoring LangGraph Runs in the LangSmith Dashboard
+
+1. Log in to [**smith.langchain.com**](https://smith.langchain.com) and open the **`multi-language-document-translator`** project.
+2. **Trace Hierarchy & Agent Spans**:
+   Each processed page produces a top-level run named **`page_multi_agent_pipeline`** containing spans corresponding to the [Specialized Agent Node Roles](#specialized-agent-node-roles):
+   - **`classifier`**: Emits layout domain (`toc`, `table_dense`, `structured_clauses`) and layout flags.
+   - **`translator`**: Emits draft translation prompt and response with domain-specific terminology rules.
+   - **`translation_critic`**: Emits `translation_passed` (boolean) and targeted critique notes. If failed, observe the **Semantic Retry Loop** routing back to `translator` (up to 2 cycles).
+   - **`table_specialist`**: Emits normalized pipe tables, unflattened TOC rows, and converted LaTeX formulas.
+   - **`formatting_critic`**: Emits `format_passed` (boolean) from dry-run HTML parsing. If failed, observe the **Formatting Retry Loop** routing back to `table_specialist` without re-invoking vision models.
+   - **`typesetter`**: Emits compiled print-ready HTML/CSS.
+3. **Evaluating Latency, Token Usage & Retries**:
+   - Inspect token costs per agent pass to evaluate prompt efficiency.
+   - Filter by run tags or errors to identify complex pages that required multiple repair iterations.
 
 ---
 
@@ -509,7 +590,10 @@ When authenticated with Google Cloud, shared cloud state resolves automatically.
 | `GCS_BUCKET_NAME` | `<project>-document-translator-data` | Target Google Cloud Storage bucket for shared models, config, and audit logs. |
 | `GEMINI_API_KEY` | Unset | Used by private local/desktop runs. Public Cloud Run requests always require the visitor's own key. |
 | `ALLOW_SERVER_GEMINI_KEY` | `false` | Explicit local-only opt-in to resolve the operator's Gemini key. Ignored on Cloud Run. |
-| `LANGSMITH_API_KEY` | *Secret Manager* | Overrides the `langsmith-api-key` resolved from GCP Secret Manager. |
+| `LANGSMITH_API_KEY` | *Secret Manager* | Overrides the `langsmith-api-key` resolved from GCP Secret Manager (must start with `ls__...`). |
+| `LANGCHAIN_PROJECT` | `multi-language-document-translator` | Target project name in LangSmith for distributed trace groupings. |
+| `LANGCHAIN_TRACING_V2` | `true` (if key set) | Toggles LangChain/LangGraph distributed tracing (`true` or `false`). Disabled on public Cloud Run by default. |
+| `LANGSMITH_TRACING` | `true` (if key set) | Standard LangSmith toggle (`true` or `false`). Set to `false` to suppress tracing. |
 | `OFFICE_RENDERER` | Auto-detected | Explicit executable path to LibreOffice (`soffice` / `soffice.exe`) for Office-to-PDF rendering and validation. |
 | `TRANSLATOR_REVIEW_MODEL` | Translation model | Optional model name override for translation reviewer passes. |
 | `OUTPUT_DIR` | OS Temp (`%TEMP%/translator_output`) | Directory for rendered files; defaults to OS temp to prevent workspace pollution. |
@@ -535,7 +619,7 @@ gcloud auth login
 gcloud auth application-default login
 ```
 
-Verify that all cloud secrets, models cache, and storage buckets are healthy:
+Run a health check on cloud secrets, models cache, and storage buckets (see [Multi-PC Sync Utility](#️-multi-pc-sync-utility-toolsoperationssync_secretspy) for more operations):
 ```bash
 python tools/operations/sync_secrets.py --check
 ```
@@ -744,12 +828,11 @@ Scripts automatically detect your active `gcloud` project and default to region 
 
 ---
 
-### Runtime Identity and Deployment Guarantees
+### Production Deployment Constraints & Guarantees
 
-- **Runtime Permissions**: Backend deployment runs under `translator-runtime` with bucket-scoped object access (`storage.objects.*`). Deployers require `roles/iam.serviceAccountUser` on `translator-runtime`.
-- **Resource Limits**: The backend deployment applies a 2 GiB memory limit, an 8 concurrent-request threshold, a 1-instance maximum, and disabled LangSmith tracing.
+- **Enforced Resource Limits**: Backend containers are deployed with a 2 GiB memory ceiling, an 8 concurrent-request threshold, a 1-instance maximum, and disabled LangSmith tracing by default.
 - **Fail-Fast Error Handling**: PowerShell and Bash deployment scripts enforce strict error checking (`$ErrorActionPreference = 'Stop'`, `set -euo pipefail`), halting execution immediately if any container build or deployment fails.
-- **Ephemeral Filesystem Contract**: Cloud Run filesystems are ephemeral: SQLite jobs do not survive instance replacement. A Docker `VOLUME` declaration does not supply persistent cloud storage. Move durable jobs to shared storage before increasing instance counts.
+- **Stateless Container Contract**: As detailed in [Durable Job System](#-durable-job-system-backendjobspy-backendjob_apipy), Cloud Run filesystems are ephemeral. Move the SQLite store and job directory to a persistent shared volume before scaling past a single instance.
 
 ---
 
