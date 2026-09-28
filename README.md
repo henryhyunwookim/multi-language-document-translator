@@ -3,7 +3,14 @@
 A modern, automated platform to translate documents—including PowerPoint presentations (`.pptx`, `.ppt`), Excel workbooks (`.xlsx`, `.xls`), Word documents (`.docx`), PDF files (digital & scanned), images, and plain text (`.txt`, `.md`, `.csv`, `.json`, `.html`)—while preserving original layouts, typography, formatting, and structural metadata.
 
 <div align="center">
-  <h3>Powered by Gemini AI Multimodal Models and Google Translate</h3>
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5-black.svg?logo=next.js&logoColor=white)](https://nextjs.org)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg?logo=python&logoColor=white)](https://python.org)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1.2-orange.svg)](https://langchain-ai.github.io/langgraph/)
+[![Google Cloud Run](https://img.shields.io/badge/Google_Cloud-Cloud_Run-4285F4.svg?logo=googlecloud&logoColor=white)](https://cloud.google.com/run)
+
+<h3>Powered by Gemini AI Multimodal Models and Google Translate</h3>
 </div>
 
 ---
@@ -27,6 +34,8 @@ A modern, automated platform to translate documents—including PowerPoint prese
 - **Two Flexible Interfaces**:
   - **Desktop App**: Standalone CustomTkinter desktop application with live process isolation and executable packaging.
   - **Web Application**: Serverless Next.js 15 web application with live terminal-style Server-Sent Events (SSE) streaming deployed on Google Cloud Run.
+- **CLI Batch Translation Processor**: High-throughput multi-document translation utility (`tools/operations/translate_documents.py`) with resumption checkpoints, isolated output directories, and machine-readable `.quality.json` audit manifests.
+- **Process-Isolated Local Supervision**: Windows Job Object supervisor (`tools/operations/local_service.py` & `run-local.ps1`) managing dual-process lifecycles for guaranteed orphan-free process termination.
 - **Multi-Tier Model Cache**: In-memory, Google Cloud Storage, and local disk synchronization for zero-latency model availability.
 
 ---
@@ -328,14 +337,24 @@ In addition to page-level micro-gates, full documents undergo cross-page review 
 
 ```
 multi-language-document-translator/
-├── .github/               # Security policy and contribution guidance
+├── .github/               # Security policy, contribution guidance, and CI workflows
 ├── backend/
 │   ├── agents/            # LangGraph multi-agent pipeline (classifier, translator, critics, typesetter)
 │   │   ├── graph.py       # LangGraph state machine definition
 │   │   ├── nodes.py       # Agent node implementations
 │   │   └── state.py       # Shared pipeline state dataclass
 │   ├── core/              # Cloud secrets resolution, GCS persistence, logging, telemetry
+│   │   ├── cloud_secrets.py     # Secret Manager resolution with ADC & gcloud fallback
+│   │   ├── cloud_storage.py     # GCS persistence, signed URL generation, transfer buffers
+│   │   ├── logger_config.py     # Centralized rotating logging configuration
+│   │   ├── model_client.py      # Multi-provider client factory (Gemini / Google Translate)
+│   │   ├── observability.py     # LangSmith tracing & telemetry configuration
+│   │   ├── public_api_guard.py  # Public request rate limits & secret isolation guards
+│   │   └── rate_limit.py        # Sliding-window rate limiter implementation
 │   ├── desktop/           # CustomTkinter GUI application, packaging spec, process wrapper
+│   │   ├── build_exe.py   # PyInstaller single-binary compilation script
+│   │   ├── gui_wrapper.py # Desktop UI process wrapper and IPC
+│   │   └── main.py        # CustomTkinter desktop interface implementation
 │   ├── engines/           # Document pipeline, review engine, layout engine, translation core
 │   │   ├── artifact_pipeline.py  # Shared pipeline router (web jobs + desktop)
 │   │   ├── document_pipeline.py  # Document pre-assessment & handler dispatch
@@ -344,22 +363,34 @@ multi-language-document-translator/
 │   │   ├── translator.py         # Core Gemini & Google Translate adapters
 │   │   └── visual_inspector.py   # Page image visual inspection helper
 │   ├── handlers/          # Format handlers
+│   │   ├── base_handler.py# Abstract base format handler
+│   │   ├── docx_handler.py# DOCX dispatch adapter
+│   │   ├── image_handler.py # Image OCR and translation handler
 │   │   ├── ooxml_text.py  # Native Office XML package patcher (XLSX, PPTX, DOCX)
+│   │   ├── pdf_digital.py # Digital PDF rendering handler
 │   │   ├── pdf_native.py  # Native digital PDF translation
 │   │   ├── pdf_scanned.py # Scanned PDF OCR handler
-│   │   ├── pdf_digital.py # Digital PDF rendering handler
-│   │   ├── image_handler.py
-│   │   └── text_handler.py
+│   │   ├── pptx_handler.py# PPTX dispatch adapter
+│   │   ├── text_handler.py# Plain text and lightweight markup handler
+│   │   └── xlsx_handler.py# XLSX dispatch adapter
 │   ├── quality/           # Quality-gated artifact pipeline
-│   │   ├── inspection.py  # Binary signature, format capability & segment extraction
+│   │   ├── components.py  # Component-level inspection & reconstruction checks
+│   │   ├── entities.py    # Numeric token extraction and equivalence rules
 │   │   ├── feedback.py    # Shared failure memory & adaptive review rule activation
+│   │   ├── inline_styles.py # Inline run styling and tag reconciliation
+│   │   ├── inspection.py  # Binary signature, format capability & segment extraction
 │   │   ├── models.py      # Shared contracts: Segment, Finding, Manifest, Plan, QualityReport
+│   │   ├── office_mutations.py # Office package mutation transforms & repairs
+│   │   ├── office_structure.py # OOXML package structure parsing & shared-string expansion
+│   │   ├── pdf_rendering.py # Native PDF rendering, text bounding & overflow detection
 │   │   ├── supervisor.py  # Bounded planner, translation specialists, repair & review loop
-│   │   ├── validation.py  # Structural XML comparison and LibreOffice visual validation
-│   │   ├── text_adapter.py  # Structured text format adapters (MD, CSV, JSON, HTML)
-│   │   └── entities.py    # Numeric token extraction and equivalence rules
+│   │   ├── text_adapter.py# Structured text format adapters (MD, CSV, JSON, HTML)
+│   │   └── validation.py  # Structural XML comparison and LibreOffice visual validation
 │   ├── rules/             # Prompt templates and format preservation rules
+│   │   ├── document_rules.py    # Format preservation guidelines
+│   │   └── prompt_templates.py  # Structured prompt definitions
 │   ├── storage/           # Model cache management and cloud synchronization
+│   │   └── model_storage.py     # Local disk and GCS model caching
 │   ├── api.py             # FastAPI REST & SSE streaming server
 │   ├── job_api.py         # Durable job REST router (/jobs prefix)
 │   ├── jobs.py            # SQLite-backed durable job store, leases, checkpoints
@@ -375,21 +406,27 @@ multi-language-document-translator/
 │   └── setup-runtime-identity.ps1 / .sh # Dedicated bucket-scoped IAM runtime provisioning
 ├── frontend/              # Next.js 15 web application (React 19)
 │   ├── app/               # Next.js application routes and UI components
-│   │   └── durable-jobs.ts  # Durable job client (submission, polling, download)
+│   │   ├── document-stream.ts # SSE document stream client
+│   │   ├── durable-jobs.ts    # Durable job client (submission, polling, download)
+│   │   ├── model-options.ts   # Model preference configurations
+│   │   ├── page.tsx           # Primary web UI application page
+│   │   └── layout.tsx         # Root HTML layout and metadata
 │   ├── Dockerfile         # Frontend container definition
 │   └── package.json       # Frontend dependencies and build scripts
-├── output/                # Local offline evaluation results (ignored)
+├── output/                # Local offline evaluation results (ignored in git)
 │   └── evaluation.json    # Machine-readable corpus run results
 ├── tools/                 # Developer, evaluation, verification, and operations utilities
 │   ├── evaluation/        # Offline regression corpus and quality checks
 │   │   ├── corpus.v1.json              # Versioned test fixture corpus
 │   │   ├── run_evaluation.py           # Corpus runner (requires local test modules)
-│   │   ├── test_*.py                   # Local-only regression suites (ignored)
+│   │   ├── test_*.py                   # Local regression test suites (ignored in git)
 │   │   └── translation-quality-assessment.md  # Quality architecture & status
 │   ├── operations/        # Batch translation, sample review, and secret sync commands
-│   │   ├── run-local.ps1               # Windows setup, checks, and service launcher
+│   │   ├── check_local.py              # Local runtime, GUI, and LibreOffice check
+│   │   ├── local_service.py            # Windows Job Object supervisor for child processes
+│   │   ├── run-local.ps1               # Setup, check, desktop, and web service launcher
 │   │   ├── sync_secrets.py             # Cloud secret & bucket health check utility
-│   │   ├── translate_documents.py      # Batch translation CLI
+│   │   ├── translate_documents.py      # High-fidelity batch translation CLI
 │   │   └── translation-pipeline.md     # Operations guide: config, API, recovery, quality reports
 │   └── verification/      # API, streaming, and durable-job integration checks
 │       ├── verify_api_stream.py          # Backend SSE stream smoke test
@@ -445,6 +482,8 @@ When authenticated with Google Cloud, shared cloud state resolves automatically.
 | `GEMINI_API_KEY` | Unset | Used by private local/desktop runs. Public Cloud Run requests always require the visitor's own key. |
 | `ALLOW_SERVER_GEMINI_KEY` | `false` | Explicit local-only opt-in to resolve the operator's Gemini key. Ignored on Cloud Run. |
 | `LANGSMITH_API_KEY` | *Secret Manager* | Overrides the `langsmith-api-key` resolved from GCP Secret Manager. |
+| `OFFICE_RENDERER` | Auto-detected | Explicit executable path to LibreOffice (`soffice` / `soffice.exe`) for Office-to-PDF rendering and validation. |
+| `TRANSLATOR_REVIEW_MODEL` | Translation model | Optional model name override for translation reviewer passes. |
 | `OUTPUT_DIR` | OS Temp (`%TEMP%/translator_output`) | Directory for rendered files; defaults to OS temp to prevent workspace pollution. |
 | `LOGS_DIR` | OS Temp (`%TEMP%/translator_logs`) | Directory for persistent log files; defaults to OS temp to prevent workspace pollution. |
 | `PORT` | `8080` | Port bound by the FastAPI backend web service. |
@@ -494,20 +533,47 @@ cd ..
 python backend/main.py
 ```
 
-### 4. Running the Full Web App Locally (Windows)
-The launcher starts the API and web UI together, monitors startup, writes service logs under `%LOCALAPPDATA%\DocumentTranslator\logs`, and cleans up both process trees on Ctrl+C:
+### 4. Running Locally via PowerShell Launcher (Windows)
+The launcher (`tools/operations/run-local.ps1`) manages both services as owned process trees via a Windows Job Object (`tools/operations/local_service.py`), ensuring child processes cleanly terminate on Ctrl+C:
 ```powershell
-.\tools\operations\run-local.ps1 -Mode Setup  # First run only: install Python and frontend dependencies
-.\tools\operations\run-local.ps1 -Mode Check  # Optional local dependency and renderer checks
-.\tools\operations\run-local.ps1             # Start API on 8080 and web UI on 3000
+# 1. First run: bootstrap isolated .venv and install all dependencies
+.\tools\operations\run-local.ps1 -Mode Setup
+
+# 2. Local check: verify imports, desktop GUI, and real Office-to-PDF rendering
+.\tools\operations\run-local.ps1 -Mode Check
+
+# 3. Start web app: runs FastAPI backend (8080) and Next.js frontend (3000)
+.\tools\operations\run-local.ps1
+
+# 4. Or launch desktop app with full environment detection:
+.\tools\operations\run-local.ps1 -Mode Desktop
 ```
-Open `http://127.0.0.1:3000`; the API docs are at `http://127.0.0.1:8080/docs`. Use `-ApiPort` and `-WebPort` to choose other ports. Enter a Gemini API key in the UI. To opt into the operator's key for a private local-only run, set `ALLOW_SERVER_GEMINI_KEY=true`; Cloud Run ignores this setting.
+Open `http://127.0.0.1:3000`; the API docs are at `http://127.0.0.1:8080/docs`. Use `-ApiPort` and `-WebPort` to choose custom ports. Enter a Gemini API key in the UI. To opt into the operator's key for a private local-only run, set `ALLOW_SERVER_GEMINI_KEY=true`; Cloud Run ignores this setting.
 
 The API and UI may also be run separately for development:
 ```bash
 uvicorn backend.api:app --reload --port 8080
 cd frontend && npm run dev
 ```
+
+### 5. CLI Batch Translation (`tools/operations/translate_documents.py`)
+For headless automation, local bulk processing, or CI workflows, use the batch translation CLI with atomic checkpoints and quality manifests:
+```bash
+# Translate multiple files with format-specific quality gating:
+python tools/operations/translate_documents.py \
+    --model gemini-2.5-flash \
+    --output-dir output/batch-runs/run1 \
+    --job input/document.pdf Korean \
+    --job input/workbook.xlsx Japanese
+
+# Resume an interrupted batch without re-translating completed documents:
+python tools/operations/translate_documents.py \
+    --model gemini-2.5-flash \
+    --output-dir output/batch-runs/run1 \
+    --resume \
+    --job input/document.pdf Korean
+```
+Each run produces translated artifacts alongside machine-readable `.quality.json` reports and `.result.json` timing manifests.
 
 ---
 
@@ -680,9 +746,21 @@ npm run build
 npm run lint
 ```
 
-### Offline Regression Corpus (no model calls)
+### Local Runtime Verification (No Model Calls)
+
+Verify backend imports, desktop GUI runtime initialization, and LibreOffice Office-to-PDF rendering without making any model or cloud API calls:
+```bash
+# Run via PowerShell launcher:
+.\tools\operations\run-local.ps1 -Mode Check
+
+# Or directly with Python:
+python tools/operations/check_local.py
+```
+
+### Offline Regression Corpus (No Model Calls)
 
 Regression modules matching `test_*.py` are retained locally and ignored by Git under this workspace’s commit policy. The commands below require those local modules and are not a complete test suite in a fresh clone. The versioned corpus manifest and runner remain tracked.
+
 Run the full versioned offline corpus, which writes machine-readable results to `output/evaluation.json`:
 ```bash
 python tools/evaluation/run_evaluation.py
@@ -696,6 +774,9 @@ python -m pytest tools/evaluation/test_quality_pipeline.py -v
 # Office package preservation: Excel formulas, PPTX links/styles/breaks, Word fields
 python -m pytest tools/evaluation/test_office_preservation.py -v
 
+# Component-level structural reconstruction and repair
+python -m pytest tools/evaluation/test_component_reconstruction.py -v
+
 # Multilingual quality & edge cases: numeric equivalence, full-width digits, cache isolation
 python -m pytest tools/evaluation/test_multilingual_quality.py -v
 
@@ -707,6 +788,15 @@ python -m pytest tools/evaluation/test_job_api.py -v
 
 # PDF gates: credential isolation, gate truthfulness, cache cleanup
 python -m pytest tools/evaluation/test_pdf_gates.py -v
+
+# Layout regressions: HTML/CSS typesetting, dot leaders, table normalization
+python -m pytest tools/evaluation/test_layout_regressions.py -v
+
+# Local service launcher: Windows Job Object supervision and process cleanup
+python -m pytest tools/evaluation/test_local_service.py -v
+
+# Public API security: rate limiting, secret isolation, public endpoint guards
+python -m pytest tools/evaluation/test_public_api_security.py -v
 
 # Adaptive quality feedback: storage races, privacy, activation thresholds, expiration
 python -m unittest tools.evaluation.feedback_regressions
