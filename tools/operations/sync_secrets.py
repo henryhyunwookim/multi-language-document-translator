@@ -100,6 +100,19 @@ def create_or_update_secret(secret_id: str, secret_value: str, project_id: str, 
 
         if ret == 0:
             print(f"[SUCCESS] Secret '{secret_id}' configured successfully.")
+
+            # Auto-prune old versions
+            try:
+                p_code, p_out, _ = run_gcloud_cmd(["secrets", "versions", "list", secret_id, f"--project={project_id}", "--filter=state:ENABLED", "--format=value(name)"])
+                if p_code == 0:
+                    active_vers = [v.strip().split("/")[-1] for v in p_out.splitlines() if v.strip()]
+                    if len(active_vers) > 1:
+                        sorted_vers = sorted(active_vers, key=lambda x: int(x) if x.isdigit() else 0, reverse=True)
+                        for old_v in sorted_vers[1:]:
+                            run_gcloud_cmd(["secrets", "versions", "destroy", old_v, f"--secret={secret_id}", f"--project={project_id}", "--quiet"])
+            except Exception:
+                pass
+
             return True
         else:
             print(f"[ERROR] Failed to save secret '{secret_id}': {err}")

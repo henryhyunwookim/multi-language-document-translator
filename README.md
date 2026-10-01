@@ -707,6 +707,8 @@ python tools/operations/sync_secrets.py --push-secrets --gemini-key "<YOUR_GEMIN
 python tools/operations/sync_secrets.py --clean-local
 ```
 
+> **Note**: `sync_secrets.py` automatically prunes superseded secret versions upon update, ensuring single-version retention within the GCP free tier.
+
 ---
 
 ## 📦 Building Standalone Executables
