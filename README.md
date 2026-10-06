@@ -446,7 +446,7 @@ export LANGCHAIN_TRACING_V2="false"
 
 ```
 multi-language-document-translator/
-├── .github/               # Security policy, contribution guidance, and CI workflows
+├── .github/               # Security policy and contribution guidance
 ├── backend/
 │   ├── agents/            # LangGraph multi-agent pipeline (classifier, translator, critics, typesetter)
 │   │   ├── graph.py       # LangGraph state machine definition
